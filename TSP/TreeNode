@@ -1,0 +1,65 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package TSP;
+
+import java.util.LinkedList;
+
+/**
+ *
+ * @author inba
+ */
+public class TreeNode {
+    TreeNode parent;
+    LinkedList<TreeNode> childrenNodes;
+    double distance;
+    int currentLocation;
+    static LinkedList<TreeNode> hCycle = new LinkedList<TreeNode>(); 
+    static int count = 0;
+    /**
+     * Constructor with integer argument 
+     * @param i integer representing the node in the MST
+     * Theta(1)
+     */
+    public TreeNode(int i){
+        currentLocation = i;
+        parent = null;
+        distance = 0;
+        childrenNodes = new LinkedList<TreeNode>();
+    }
+    /**
+     * Adds the current node as child node to parent node and 
+     * updates the parent information and distance from parent node 
+     * to current node .
+     * @param parent parent of given node
+     * @param distance distance from parent node to given node
+     * Theta(1)
+     */
+    void addParents(TreeNode parent, double distance) {
+        this.parent = parent;
+        this.distance =distance;
+        parent.childrenNodes.add(this);
+    }
+    /**
+     * Does a preorder traversal of the MST 
+     * Theta(n)
+     */
+    void  preOrder(){
+        preOrder(this);
+        hCycle.add(this);
+    }
+    /**
+     * Does a preorder traversal of the MST
+     * @param n root node of the MST
+     * Theta(n)
+     */
+    private void preOrder(TreeNode n) {
+        hCycle.add(n);
+        for(TreeNode child: n.childrenNodes){
+        preOrder(child);
+        }
+    }
+    
+}

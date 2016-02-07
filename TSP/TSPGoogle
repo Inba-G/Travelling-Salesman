@@ -1,0 +1,201 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package tspgoogle;
+
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
+
+/**
+ *
+ * @author inba
+ */
+public class TSPGoogle {
+
+    /**
+     * @param args the command line arguments
+     */
+    static final String KML1 = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\r\n" + 
+			"<kml xmlns=\"http://earth.google.com/kml/2.2\">\r\n" + 
+			"<Document>\r\n" + 
+			"<name>Pittsburgh TSP</name><description>TSP on Crime</description><Style id=\"style6\">\r\n" + 
+			"<LineStyle>\r\n" + 
+			"<color>73FF0000</color>\r\n" + 
+			"<width>5</width>\r\n" + 
+			"</LineStyle>\r\n" + 
+			"</Style>\r\n" + 
+			"<Style id=\"style5\">\r\n" + 
+			"<LineStyle>\r\n" + 
+			"<color>507800F0</color>\r\n" + 
+			"<width>5</width>\r\n" + 
+			"</LineStyle>\r\n" + 
+			"</Style>\r\n" + 
+			"<Placemark>\r\n" + 
+			"<name>TSP Path</name>\r\n" + 
+			"<description>TSP Path</description>\r\n" + 
+			"<styleUrl>#style6</styleUrl>\r\n" + 
+			"<LineString>\r\n" + 
+			"<tessellate>1</tessellate>\r\n" + 
+			"<coordinates>\r\n" + 
+			"";
+	
+	static final String KML2 = "</coordinates>\r\n" + 
+			"</LineString>\r\n" + 
+			"</Placemark>\r\n" + 
+			"<Placemark>\r\n" + 
+			"<name>Optimal Path</name>\r\n" + 
+			"<description>Optimal Path</description>\r\n" + 
+			"<styleUrl>#style5</styleUrl>\r\n" + 
+			"<LineString>\r\n" + 
+			"<tessellate>1</tessellate>\r\n" + 
+			"<coordinates>\r\n" + 
+			"";
+			
+	static final String KML3 = "</coordinates>\r\n" + 
+			"</LineString>\r\n" + 
+			"</Placemark>\r\n" + 
+			"</Document>\r\n" + 
+			"</kml>\r\n" + 
+			"";
+    
+    
+    public static void main(String[] args) throws IOException {
+
+	    String currentLine;
+            String oCoordinates="";
+           String coordinates="";
+        String[] crimeRecords = new String[10000];
+        int count = 0;
+        if(args.length<1){
+            System.out.println("Enter File Name");
+            return;
+        }
+        BufferedReader br;
+        try{
+            FileReader f= new FileReader(args[0]); 
+            br = new BufferedReader(f);
+            while ((currentLine = br.readLine()) != null) {
+                crimeRecords[count++]=currentLine;
+            }
+        }catch(FileNotFoundException fe){
+            System.out.println("File was not found in specified location.");
+        }
+        br = new BufferedReader(new InputStreamReader(System.in));
+        System.out.println("Enter start index:");
+        int sIndex=Integer.parseInt(br.readLine());
+        System.out.println("Enter end index:");
+        int eIndex= Integer.parseInt(br.readLine());
+        System.out.println("Crime Records processed:");
+        for(int i=sIndex;i<=eIndex;i++){
+            System.out.println(crimeRecords[i]);
+        }
+        double[][] distance = distances(crimeRecords,sIndex,eIndex);
+        double[][] coords = coords(crimeRecords,sIndex,eIndex);
+        
+        Prim p = new Prim();
+        int[] parents = p.mstPrim(distance, eIndex-sIndex+1);
+        double length = 0;
+        
+        TreeNode[] msTree = new TreeNode[parents.length];
+        for(int i=0;i<parents.length;i++){
+            msTree[i] = new TreeNode(i);
+        }
+        
+        TreeNode root = msTree[0];
+        for(int i=1;i<parents.length;i++){
+            msTree[i].addParents(msTree[parents[i]],distance[parents[i]][i]);
+            
+        }
+        root.preOrder();
+        TreeNode[] hcArray = TreeNode.hCycle.toArray(new TreeNode[0]);
+        for(int i=0;i<hcArray.length;i++){
+                coordinates += ""+(coords[hcArray[i].currentLocation][1]+0.001) + "," + coords[hcArray[i].currentLocation][0]+"0.001," + "0.000000\r\n";
+        }
+        int[] vertices= new int[eIndex-sIndex+1];
+        for(int i=0;i<eIndex-sIndex+1;i++){
+            vertices[i]=i;
+        }
+        OptimalPath oP = new OptimalPath();
+        int[] oPath = oP.permutation(distance, vertices, 0);
+        for(int i=0;i<oPath.length;i++){
+                oCoordinates += ""+coords[oPath[i]][1] + "," + coords[oPath[i]][0] + ",0.000000\r\n";
+        }
+	   oCoordinates += ""+coords[oPath[0]][1] + "," + coords[oPath[0]][0] + ",0.000000\r\n";
+	    
+	    String fileName1 = "PGHCrimes.kml";
+	    try {
+			FileWriter fw = new FileWriter(fileName1);
+			BufferedWriter bw = new BufferedWriter(fw);
+			bw.write(KML1);
+			bw.write(coordinates);
+			bw.write(KML2);
+                        bw.write(oCoordinates);
+			bw.write(KML3);
+			bw.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	    System.out.println();
+	    System.out.println("PGHCrimes.kml genrated");
+    }
+    /**
+     * Creates the weighted adjacency matrix
+     * @param crimeRecords records to be processed
+     * @param sIndex start index of the record position
+     * @param eIndex position of final record to be processed 
+     * @return returns the adjacency matrix
+     * Theta(n-squared)
+     */
+    public static double[][] distances(String[] crimeRecords,int sIndex, int eIndex){
+        double[][] distances= new double[eIndex-sIndex+1][eIndex-sIndex+1];
+        
+        String[] sDistancesI,sDistancesJ;
+        for(int i=sIndex;i<=eIndex;i++){
+            sDistancesI =  crimeRecords[i].split(",");
+            for(int j=sIndex;j<=eIndex;j++){
+                sDistancesJ=crimeRecords[j].split(",");
+                distances[i-sIndex][j-sIndex] = distance(Double.parseDouble(sDistancesI[0]),Double.parseDouble(sDistancesI[1]),Double.parseDouble(sDistancesJ[0]),Double.parseDouble(sDistancesJ[1]));
+            }
+        }
+        
+        return distances;
+    }
+/**
+ * returns the distance between two coordinates using pythogorean formula
+ * @param x1 x coordinate of first position
+ * @param y1 y coordinate of second position
+ * @param x2 x coordinate of first position
+ * @param y2 y coordinate of second position
+ * @return distance between the two coordinates
+ * Theta(1)
+ */
+    public static double distance (double x1, double y1, double x2, double y2){
+        return Math.sqrt(Math.pow(x1-x2,2) + Math.pow(y1-y2,2))*0.00018939;
+    }
+/**
+ * 
+ * @param crimeRecords crime records to be processed
+ * @param sIndex index of first record to be processed
+ * @param eIndex index of last record to be processed
+ * @return returns an array containing the latitude and longtitude of the nodes 
+ * Theta(n)
+ */
+    private static double[][] coords(String[] crimeRecords, int sIndex, int eIndex) {
+       double[][] coords= new double[eIndex-sIndex+1][eIndex-sIndex+1];
+       String[] sCoordsI,sCoordsJ;
+        for(int i=sIndex;i<=eIndex;i++){
+            sCoordsI =  crimeRecords[i].split(",");
+            coords[i-sIndex][0] = Double.parseDouble(sCoordsI[7]);
+            coords[i-sIndex][1] = Double.parseDouble(sCoordsI[8]);
+        }
+       return coords;
+    }
+    
+}
